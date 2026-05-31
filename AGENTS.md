@@ -143,6 +143,12 @@ Facts agents should know; append here when you discover something important.
 
 Newest entries first. **Agents: append here when you finish a task.**
 
+### 2026-05-31 — README promo + demo assets
+
+- Added `docs/demo.gif` and `docs/demo-poster.png` (captured from local app via `scripts/capture-demo.mjs`).
+- Rewrote `README.md`: hero animation, badges, beginner step-by-step Google API key guide.
+- **Verify:** view README on GitHub; GIF loads from `docs/demo.gif`.
+
 ### 2026-05-31 — GitHub repository files
 
 - Added `LICENSE` (MIT), `SECURITY.md`, `CONTRIBUTING.md`, `.gitattributes`.

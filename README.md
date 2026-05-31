@@ -1,44 +1,131 @@
-# 3D Google Maps Explorer
+<p align="center">
+  <img src="docs/demo.gif" alt="3D Maps Explorer demo — search landmarks, fly the camera, match live weather" width="720">
+</p>
 
-A web application that explores the world with **Google Maps native 3D** (`Map3DElement`), photorealistic buildings where available, and screen-space atmosphere effects (time of day, clouds, rain, snow).
+<h1 align="center">3D Google Maps Explorer</h1>
+
+<p align="center">
+  Fly through photorealistic 3D cities in your browser.<br>
+  Search anywhere on Earth, sync live weather, and play with time-of-day atmosphere — powered by Google Maps.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D18-green.svg" alt="Node 18+"></a>
+</p>
+
+---
+
+## What is this?
+
+A **free, open-source** web app for exploring the world in **native Google Maps 3D** — tilted satellite views, photorealistic buildings (where available), cinematic fly-to search, and screen-space weather effects (rain, snow, clouds, day/night).
+
+No game engine required. Just Node.js, a Google Maps API key, and a browser.
 
 ## Features
 
 - Photorealistic **3D map** with tilt, heading, and range camera controls
 - **Location search** with cinematic fly-to and native 3D markers
-- **Match real weather** — live rain/snow/clear and cloud cover from [Open-Meteo](https://open-meteo.com/) (no extra API key)
-- Dynamic **time of day** tint on the map view
-- Adjustable **cloud coverage** and **weather** (rain, snow)
+- **Match real weather** — live rain/snow/clear from [Open-Meteo](https://open-meteo.com/) (no extra API key)
+- Dynamic **time of day** tint, adjustable **clouds**, and manual **rain/snow**
 - **Orbit location** camera animation
-- Express server keeps the API key in `.env`, not in HTML
+- API key stays in `.env` on the server — never hard-coded in HTML
 
-## Setup
+---
 
-1. **Create a Google Maps API key** in [Google Cloud Console](https://console.cloud.google.com/):
-   - Create or select a project.
-   - Enable **Maps JavaScript API**, **Geocoding API**, and **Map Tiles API**.
-   - Create credentials → API key.
-   - For local development, set HTTP referrer restrictions to `http://localhost:3000/*` and `http://127.0.0.1:3000/*`.
+## Quick start
 
-2. **Configure the server**:
-   ```bash
-   cp .env.example .env
+### 1. Clone and install
+
+```bash
+git clone https://github.com/v3gaS/Google-Maps-Explorer-3D.git
+cd Google-Maps-Explorer-3D
+npm install
+```
+
+### 2. Get a free Google Maps API key (beginner guide)
+
+Google gives every new Cloud account **$200/month in free Maps credit** — more than enough for personal learning and local development. You will need a credit/debit card to verify your account, but you stay in the free tier unless you exceed those credits.
+
+#### Step A — Create a Google Cloud account
+
+1. Go to **[Google Cloud Console](https://console.cloud.google.com/)**.
+2. Sign in with any Google account.
+3. Accept the terms if prompted. New users get a **free trial** with credits.
+
+#### Step B — Create a project
+
+1. Click the **project dropdown** at the top (next to “Google Cloud”).
+2. Click **New Project**.
+3. Name it something like `maps-3d-explorer` → **Create**.
+4. Make sure that project is **selected** in the dropdown.
+
+#### Step C — Enable billing (required, but free tier applies)
+
+1. Go to **[Billing](https://console.cloud.google.com/billing)**.
+2. Link a billing account if asked. Google uses this for verification; normal hobby use on localhost stays within free credits.
+
+#### Step D — Enable the APIs this app uses
+
+1. Open **[APIs & Services → Library](https://console.cloud.google.com/apis/library)**.
+2. Search and **Enable** each of these (one at a time):
+
+   | API | Why you need it |
+   |-----|-----------------|
+   | **Maps JavaScript API** | Renders the 3D map in the browser |
+   | **Geocoding API** | Powers the location search box |
+   | **Map Tiles API** | Photorealistic 3D buildings where available |
+
+#### Step E — Create an API key
+
+1. Go to **[APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)**.
+2. Click **+ Create credentials** → **API key**.
+3. Copy the key (starts with `AIza…`). Keep it private — treat it like a password.
+
+#### Step F — Restrict the key (recommended)
+
+1. Click your new key to edit it.
+2. Under **Application restrictions** → **Websites**.
+3. Add these referrers for local development:
+
    ```
-   Edit `.env` and set `GOOGLE_MAPS_API_KEY` to your key.
-
-3. **Install and run**:
-   ```bash
-   npm install
-   npm start
+   http://localhost:3000/*
+   http://127.0.0.1:3000/*
    ```
 
-4. Open **http://localhost:3000**.
+4. Under **API restrictions** → **Restrict key** → select only the three APIs above.
+5. **Save**.
 
-For development with auto-reload:
+> **Tip for newer coders:** Never paste your API key into GitHub, Discord, or screenshots. This project reads it from a `.env` file that is gitignored.
+
+### 3. Configure the app
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and paste your key:
+
+```env
+GOOGLE_MAPS_API_KEY=AIzaSy...your_key_here
+PORT=3000
+```
+
+### 4. Run
+
+```bash
+npm start
+```
+
+Open **[http://localhost:3000](http://localhost:3000)** — you should see a tilted 3D view of New York City.
+
+Development with auto-reload:
 
 ```bash
 npm run dev
 ```
+
+---
 
 ## Usage
 
@@ -46,7 +133,7 @@ npm run dev
 
 - **Drag** to orbit the 3D view
 - **Scroll** to zoom (changes camera range)
-- **Shift + drag** or two-finger gestures for additional control (platform-dependent)
+- **Shift + drag** or two-finger gestures for extra control (varies by device)
 
 ### Controls
 
@@ -59,86 +146,57 @@ npm run dev
 | Reset View | Return to default New York view |
 | Time of Day | Change lighting tint (0–24 hours) |
 | Cloud Coverage | Adjust screen-space clouds |
-| Match real weather | Sync rain/snow/clear and clouds to live conditions at map center (Open-Meteo) |
+| Match real weather | Sync rain/snow/clear to live conditions at map center |
 | Weather | Toggle rain, snow, or clear manually |
 
-## Architecture
-
-```text
-Express (server.js)
-  └── GET /api/maps-config  → apiKey, mapsVersion: beta
-  └── GET /api/health
-
-Browser (main.html + js/)
-  └── bootstrap.js          → load Maps JS (v=beta), init app
-  └── map3d.js              → Map3DElement lifecycle, flyCameraTo
-  └── geocoder.js           → address search
-  └── markers.js            → Marker3DElement for search results
-  └── atmosphere.js         → screen-space tint, clouds, weather (Canvas 2D)
-  └── weather.js            → live weather sync via /api/weather (Open-Meteo)
-  └── ui.js                 → control panel wiring
-```
-
-The 3D map is rendered by Google's `Map3DElement`. Atmosphere effects are a non-interactive overlay (`pointer-events: none`) so map gestures always work.
-
-## Manual test checklist
-
-- [ ] App opens to a tilted 3D view of New York
-- [ ] Drag and scroll navigate smoothly (no overlay blocking input)
-- [ ] Search "Golden Gate Bridge" flies camera and shows a marker
-- [ ] Time slider changes map tint
-- [ ] Cloud/rain/snow toggles work without blocking the map
-- [ ] Map mode switches HYBRID ↔ SATELLITE
-- [ ] **Match real weather** toggle updates effects for current map center
-- [ ] `/api/weather?lat=40.71&lng=-74.00` returns `{ effect, cloudCoverage }`
-- [ ] `/api/maps-config` returns `{ apiKey, mapsVersion: "beta" }`
-
-Run automated smoke checks:
-
-```bash
-npm test
-```
+---
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| Infinite loading spinner | Ensure `Map3DElement` has `mode` set to `HYBRID` or `SATELLITE` |
-| `gm_authFailure` | Check API key, enable Maps JavaScript API, add `http://localhost:3000/*` to referrer restrictions |
+| Infinite loading spinner | `Map3DElement` needs `mode` set to `HYBRID` or `SATELLITE` (already configured in this repo) |
+| `gm_authFailure` or blank map | Check API key in `.env`, enable **Maps JavaScript API**, add `http://localhost:3000/*` to referrer restrictions |
+| `503` on `/api/maps-config` | Copy `.env.example` → `.env` and set a real key; restart the server |
+| Geocoding / search fails | Enable **Geocoding API** on the same Cloud project |
 | No 3D buildings | Enable **Map Tiles API**; photorealistic 3D may be unavailable in the EEA |
-| Geocoding fails | Enable **Geocoding API** on the same Cloud project |
-| 503 on `/api/maps-config` | Copy `.env.example` to `.env` and set a real `GOOGLE_MAPS_API_KEY` |
+| “Billing not enabled” in Google Cloud | Link a billing account — free credits still apply for learning |
+
+---
+
+## Development
+
+```bash
+npm test   # smoke tests — server must be running
+```
+
+See [`AGENTS.md`](AGENTS.md) for architecture notes and [`CONTRIBUTING.md`](CONTRIBUTING.md) for pull request guidelines.
+
+### Architecture (short)
+
+```text
+Express (server.js) → /api/maps-config, /api/weather, /api/health
+Browser (js/)       → Map3DElement + atmosphere overlay + UI controls
+```
+
+---
 
 ## Security
 
-1. Restrict your API key in Google Cloud (HTTP referrers for browser keys).
-2. Keep `.env` out of version control (listed in `.gitignore`).
-3. Use HTTPS in production.
+- Restrict your API key in Google Cloud (HTTP referrers for browser keys).
+- Never commit `.env` or service account JSON (already in `.gitignore`).
+- Use HTTPS in production.
 
 ## Requirements
 
 - Node.js 18+ and npm
-- Modern browser with WebGL support
+- Modern browser with WebGL
 - Internet connection for map tiles
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
-## Publishing to GitHub
+## Contributing
 
-1. Initialize git (if needed): `git init`
-2. Confirm secrets are ignored: `git check-ignore -v .env` (should match `.gitignore`)
-3. Stage and commit — **never** add `.env` or `pwsmain-*.json`
-4. Create a repo on GitHub and push:
-
-```bash
-git add .
-git status   # verify .env and node_modules are not listed
-git commit -m "Initial commit: 3D Google Maps Explorer"
-git branch -M main
-git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
-git push -u origin main
-```
-
-Set `GOOGLE_MAPS_API_KEY` in your deployment platform or locally via `.env` (not in the repository).
+Pull requests welcome! Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) first.
