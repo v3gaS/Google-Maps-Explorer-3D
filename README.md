@@ -175,8 +175,9 @@ See [`AGENTS.md`](AGENTS.md) for architecture notes and [`CONTRIBUTING.md`](CONT
 ### Architecture (short)
 
 ```text
-Express (server.js) → /api/maps-config, /api/weather, /api/health
-Browser (js/)       → Map3DElement + atmosphere overlay + UI controls
+server.js + server/     → config, weatherService, API routes
+js/constants.js         → shared defaults
+js/                     → Map3DElement, atmosphere, weather, UI modules
 ```
 
 ---

@@ -1,20 +1,51 @@
-import { state } from './state.js';
+/**
+ * @file atmosphere.js
+ * @description Screen-space atmosphere: day/night tint, clouds, rain, and snow.
+ *
+ * All effects render on a transparent canvas overlay with pointer-events disabled
+ * so Map3DElement gestures are never blocked.
+ */
 
+import { ATMOSPHERE, WEATHER_EFFECT } from './constants.js';
+import { state } from './state.js';
+import { clamp, formatTimeOfDay } from './utils/format.js';
+
+/** @type {HTMLCanvasElement | null} */
 let canvas = null;
+
+/** @type {CanvasRenderingContext2D | null} */
 let ctx = null;
+
+/** @type {number | null} */
 let animationId = null;
+
+/** @type {Array<object>} */
 let clouds = [];
+
+/** @type {Array<object>} */
 let rainDrops = [];
+
+/** @type {Array<object>} */
 let snowFlakes = [];
+
+/** @type {HTMLElement | null} */
 let tintOverlay = null;
 
-const RAIN_COUNT = 800;
-const SNOW_COUNT = 400;
-
+/**
+ * Initializes the atmosphere overlay and starts the animation loop.
+ */
 export function initAtmosphere() {
   tintOverlay = document.getElementById('atmosphere-tint');
   canvas = document.getElementById('atmosphere-canvas');
+
+  if (!canvas || !tintOverlay) {
+    throw new Error('Atmosphere elements are missing from the page.');
+  }
+
   ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Unable to acquire 2D rendering context for atmosphere canvas.');
+  }
 
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
@@ -31,16 +62,19 @@ function resizeCanvas() {
 
 function initClouds() {
   clouds = [];
-  const count = Math.floor(state.cloudCoverage / 5);
+  const count = Math.floor(state.cloudCoverage / ATMOSPHERE.CLOUDS_PER_COVERAGE_STEP);
   for (let i = 0; i < count; i += 1) {
     clouds.push(createCloud());
   }
 }
 
 function createCloud() {
+  const width = canvas?.width || window.innerWidth;
+  const height = canvas?.height || window.innerHeight;
+
   return {
-    x: Math.random() * (canvas?.width || window.innerWidth),
-    y: Math.random() * ((canvas?.height || window.innerHeight) * 0.35) + 20,
+    x: Math.random() * width,
+    y: Math.random() * (height * 0.35) + 20,
     width: 80 + Math.random() * 120,
     height: 30 + Math.random() * 40,
     speed: 0.15 + Math.random() * 0.25,
@@ -48,28 +82,34 @@ function createCloud() {
   };
 }
 
+/** Rebuilds cloud sprites after manual cloud coverage changes. */
 export function updateCloudCoverage() {
   initClouds();
 }
 
+/**
+ * Sets cloud coverage from live weather or programmatic updates.
+ * @param {number} value - Percentage from 0 to 100.
+ */
 export function applyCloudCoverage(value) {
-  state.cloudCoverage = Math.max(0, Math.min(100, Math.round(value)));
+  state.cloudCoverage = clamp(Math.round(value), 0, 100);
+
   const cloudValue = document.getElementById('cloud-value');
   const cloudSlider = document.getElementById('cloud-slider');
   if (cloudValue) cloudValue.textContent = `${state.cloudCoverage}%`;
   if (cloudSlider) cloudSlider.value = String(state.cloudCoverage);
+
   initClouds();
 }
 
+/** Updates map tint and overlay gradient based on state.timeOfDay. */
 export function updateTimeOfDay() {
   if (!tintOverlay) return;
 
   const hour = state.timeOfDay;
-  const hours = Math.floor(hour);
-  const minutes = Math.floor((hour - hours) * 60);
   const timeValue = document.getElementById('time-value');
   if (timeValue) {
-    timeValue.textContent = `${hours}:${minutes < 10 ? '0' + minutes : minutes}`;
+    timeValue.textContent = formatTimeOfDay(hour);
   }
 
   let filter = '';
@@ -85,7 +125,6 @@ export function updateTimeOfDay() {
       'linear-gradient(to bottom, rgba(255,160,122,0.35) 0%, rgba(255,120,80,0.15) 40%, transparent 70%)';
   } else {
     filter = 'brightness(1) saturate(1) hue-rotate(0deg)';
-    gradient = 'transparent';
   }
 
   const mapContainer = document.getElementById('map-container');
@@ -95,14 +134,19 @@ export function updateTimeOfDay() {
   tintOverlay.style.background = gradient;
 }
 
+/**
+ * Applies a weather effect to the atmosphere overlay.
+ * @param {'clear' | 'rain' | 'snow'} effect
+ * @param {{ fromLive?: boolean }} [options]
+ */
 export function setWeather(effect, { fromLive = false } = {}) {
   state.weatherEffect = effect;
   updateWeatherButtons();
 
-  if (effect === 'rain') {
+  if (effect === WEATHER_EFFECT.RAIN) {
     initRain();
     snowFlakes = [];
-  } else if (effect === 'snow') {
+  } else if (effect === WEATHER_EFFECT.SNOW) {
     initSnow();
     rainDrops = [];
   } else {
@@ -118,8 +162,10 @@ export function setWeather(effect, { fromLive = false } = {}) {
 }
 
 function initRain() {
+  if (!canvas || canvas.width === 0 || canvas.height === 0) return;
+
   rainDrops = [];
-  for (let i = 0; i < RAIN_COUNT; i += 1) {
+  for (let i = 0; i < ATMOSPHERE.RAIN_PARTICLE_COUNT; i += 1) {
     rainDrops.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
@@ -130,8 +176,10 @@ function initRain() {
 }
 
 function initSnow() {
+  if (!canvas || canvas.width === 0 || canvas.height === 0) return;
+
   snowFlakes = [];
-  for (let i = 0; i < SNOW_COUNT; i += 1) {
+  for (let i = 0; i < ATMOSPHERE.SNOW_PARTICLE_COUNT; i += 1) {
     snowFlakes.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
@@ -147,16 +195,18 @@ function updateWeatherButtons() {
     btn.classList.remove('active');
   });
 
-  const activeId =
-    state.weatherEffect === 'rain'
-      ? 'rain-btn'
-      : state.weatherEffect === 'snow'
-        ? 'snow-btn'
-        : 'clear-btn';
+  const activeId = {
+    [WEATHER_EFFECT.RAIN]: 'rain-btn',
+    [WEATHER_EFFECT.SNOW]: 'snow-btn',
+    [WEATHER_EFFECT.CLEAR]: 'clear-btn',
+  }[state.weatherEffect] || 'clear-btn';
+
   document.getElementById(activeId)?.classList.add('active');
 }
 
 function drawClouds() {
+  if (!ctx || !canvas) return;
+
   clouds.forEach((cloud) => {
     ctx.save();
     ctx.globalAlpha = cloud.opacity;
@@ -177,8 +227,11 @@ function drawClouds() {
 }
 
 function drawRain() {
+  if (!ctx || !canvas) return;
+
   ctx.strokeStyle = 'rgba(170, 170, 200, 0.6)';
   ctx.lineWidth = 1;
+
   rainDrops.forEach((drop) => {
     ctx.beginPath();
     ctx.moveTo(drop.x, drop.y);
@@ -195,7 +248,10 @@ function drawRain() {
 }
 
 function drawSnow() {
+  if (!ctx || !canvas) return;
+
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+
   snowFlakes.forEach((flake) => {
     ctx.beginPath();
     ctx.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2);
@@ -204,6 +260,7 @@ function drawSnow() {
     flake.y += flake.speed;
     flake.x += Math.sin(flake.drift + Date.now() * 0.001) * 0.5;
     flake.drift += 0.01;
+
     if (flake.y > canvas.height) {
       flake.y = -5;
       flake.x = Math.random() * canvas.width;
@@ -213,15 +270,16 @@ function drawSnow() {
 
 function renderFrame() {
   if (!ctx || !canvas) return;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (state.cloudCoverage > 0) {
     drawClouds();
   }
 
-  if (state.weatherEffect === 'rain') {
+  if (state.weatherEffect === WEATHER_EFFECT.RAIN) {
     drawRain();
-  } else if (state.weatherEffect === 'snow') {
+  } else if (state.weatherEffect === WEATHER_EFFECT.SNOW) {
     drawSnow();
   }
 }
@@ -231,11 +289,18 @@ function startAnimation() {
     renderFrame();
     animationId = requestAnimationFrame(loop);
   };
-  if (animationId) cancelAnimationFrame(animationId);
+
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
   loop();
 }
 
+/** Stops the animation loop and removes listeners. */
 export function destroyAtmosphere() {
-  if (animationId) cancelAnimationFrame(animationId);
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
   window.removeEventListener('resize', resizeCanvas);
 }

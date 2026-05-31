@@ -1,11 +1,19 @@
 /**
- * Smoke tests for the 3D Maps Explorer server.
- * Run: npm test
+ * @file smoke.test.js
+ * @description HTTP smoke tests for the Express server and static assets.
+ *
+ * Run with the server already listening:
+ *   npm start
+ *   npm test
  */
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
 const BASE = `http://localhost:${PORT}`;
 
+/**
+ * @param {string} name
+ * @param {() => Promise<void>} fn
+ */
 async function assertOk(name, fn) {
   try {
     await fn();
@@ -34,22 +42,6 @@ async function main() {
     if (data.mapsVersion !== 'beta') throw new Error(`mapsVersion=${data.mapsVersion}`);
   });
 
-  await assertOk('GET / serves main.html', async () => {
-    const res = await fetch(`${BASE}/`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
-    if (!html.includes('3D Google Maps Explorer')) throw new Error('unexpected HTML');
-    if (!html.includes('js/bootstrap.js')) throw new Error('missing bootstrap.js');
-    if (!html.includes('gmp-map-3d') && !html.includes('map-container')) {
-      throw new Error('missing map container');
-    }
-  });
-
-  await assertOk('GET /js/bootstrap.js is served', async () => {
-    const res = await fetch(`${BASE}/js/bootstrap.js`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  });
-
   await assertOk('GET /api/weather returns effect for NYC coords', async () => {
     const res = await fetch(`${BASE}/api/weather?lat=40.71&lng=-74.00`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -60,6 +52,25 @@ async function main() {
     if (typeof data.cloudCoverage !== 'number') {
       throw new Error('missing cloudCoverage');
     }
+  });
+
+  await assertOk('GET /api/weather rejects invalid coordinates', async () => {
+    const res = await fetch(`${BASE}/api/weather?lat=999&lng=0`);
+    if (res.status !== 400) throw new Error(`expected HTTP 400, got ${res.status}`);
+  });
+
+  await assertOk('GET / serves main.html', async () => {
+    const res = await fetch(`${BASE}/`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    if (!html.includes('3D Google Maps Explorer')) throw new Error('unexpected HTML');
+    if (!html.includes('js/bootstrap.js')) throw new Error('missing bootstrap.js');
+    if (!html.includes('map-container')) throw new Error('missing map container');
+  });
+
+  await assertOk('GET /js/bootstrap.js is served', async () => {
+    const res = await fetch(`${BASE}/js/bootstrap.js`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
   });
 
   console.log('');

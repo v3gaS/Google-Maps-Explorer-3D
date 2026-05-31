@@ -58,26 +58,13 @@ npm run dev            # nodemon
 
 ```text
 server.js
-  GET /api/health
-  GET /api/maps-config   → { apiKey, mapsVersion: "beta", mapId? }
-  GET /api/weather       → { effect, cloudCoverage, temperature, summary, ... }
+  server/config.js, server/weatherService.js
+  GET /api/health | /api/maps-config | /api/weather
   static → main.html, js/, css/
 
-main.html
-  #map-container         → Map3DElement (gmp-map-3d)
-  #atmosphere-tint       → day/night CSS gradient overlay
-  #atmosphere-canvas     → clouds, rain, snow particles
-  #controls              → UI panel
-
-js/ (ES modules, entry: bootstrap.js)
-  bootstrap.js   → load Maps API, init app
-  map3d.js       → Map3DElement, flyCameraTo, flyCameraAround, resetView
-  geocoder.js    → google.maps.Geocoder address search
-  markers.js     → Marker3DElement for search results
-  atmosphere.js  → time tint, clouds, rain/snow; setWeather, applyCloudCoverage
-  weather.js     → live weather sync, matchRealWeather toggle
-  ui.js          → control wiring, errors, loading
-  state.js       → shared app state
+js/
+  constants.js, utils/format.js
+  bootstrap.js → map3d, geocoder, markers, atmosphere, weather, ui, state
 ```
 
 **Design rules:**
@@ -142,6 +129,15 @@ Facts agents should know; append here when you discover something important.
 ## Progress log
 
 Newest entries first. **Agents: append here when you finish a task.**
+
+### 2026-05-31 — Senior code quality pass
+
+- Extracted `server/config.js`, `server/weatherService.js`; slimmed `server.js`.
+- Added `js/constants.js`, `js/utils/format.js`; JSDoc module headers across client code.
+- Fixed manual weather control flow (`applyManualWeather`, `applyManualCloudCoverage`).
+- Added guards for missing DOM/canvas/map; optional chaining on UI listeners.
+- Added `.editorconfig`, updated `package.json` metadata, expanded smoke tests.
+- **Verify:** `npm test` with server running.
 
 ### 2026-05-31 — README promo + demo assets
 

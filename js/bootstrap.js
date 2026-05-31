@@ -1,9 +1,16 @@
+/**
+ * @file bootstrap.js
+ * @description Application entry point: load configuration, Maps API, and subsystems.
+ */
+
+import { MAPS_JS_VERSION } from './constants.js';
 import { state } from './state.js';
 import { createMap3D } from './map3d.js';
 import { initAtmosphere } from './atmosphere.js';
 import { initUI, setLoading, showError } from './ui.js';
 import { startLiveWeatherSync } from './weather.js';
 
+/** Google Maps auth failure callback — registered before the API script loads. */
 window.gm_authFailure = function gmAuthFailure() {
   setLoading(false);
   showError(
@@ -11,11 +18,17 @@ window.gm_authFailure = function gmAuthFailure() {
   );
 };
 
-async function loadMapsScript(config) {
+/**
+ * Loads the Maps JavaScript API bootstrap script.
+ * @param {{ apiKey: string, mapsVersion?: string }} config
+ * @returns {Promise<void>}
+ */
+function loadMapsScript(config) {
   return new Promise((resolve, reject) => {
-    const version = encodeURIComponent(config.mapsVersion || 'beta');
+    const version = encodeURIComponent(config.mapsVersion || MAPS_JS_VERSION);
     const key = encodeURIComponent(config.apiKey);
     const script = document.createElement('script');
+
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&v=${version}`;
     script.async = true;
     script.defer = true;
@@ -25,6 +38,7 @@ async function loadMapsScript(config) {
   });
 }
 
+/** Bootstraps the full client application. */
 async function initApp() {
   try {
     setLoading(true, 'Loading Maps API...');
@@ -36,7 +50,7 @@ async function initApp() {
       throw new Error(config.error || 'Failed to get Maps API configuration from the server.');
     }
 
-    state.mapsVersion = config.mapsVersion || 'beta';
+    state.mapsVersion = config.mapsVersion || MAPS_JS_VERSION;
     state.mapId = config.mapId || null;
 
     await loadMapsScript(config);
@@ -44,6 +58,10 @@ async function initApp() {
     setLoading(true, 'Loading 3D map...');
 
     const container = document.getElementById('map-container');
+    if (!container) {
+      throw new Error('Map container element #map-container was not found.');
+    }
+
     await createMap3D(container);
 
     initAtmosphere();
@@ -52,9 +70,11 @@ async function initApp() {
 
     setLoading(false);
   } catch (error) {
-    console.error('Error initializing app:', error);
+    console.error('[bootstrap]', error);
     setLoading(false);
-    showError(error.message || 'Failed to initialize the 3D map. Check the server console and .env file.');
+    showError(
+      error.message || 'Failed to initialize the 3D map. Check the server console and .env file.',
+    );
   }
 }
 
