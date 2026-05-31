@@ -1,179 +1,151 @@
-# AGENTS.md — 3D Google Maps Explorer
+# AGENTS.md
 
-This file is the **canonical handoff document** for any AI agent working in this repository. Read it at the start of every session. **Update it before you finish** whenever you change behavior, architecture, or project status.
+Guide for contributors and AI coding assistants working on **3D Google Maps Explorer**.
 
----
-
-## Agent instructions (required)
-
-### At session start
-
-1. Read this entire file.
-2. Read [`README.md`](README.md) for user-facing setup and usage.
-3. Check **Progress log** and **Known issues** below before planning work.
-4. Do not commit `.env`, service-account JSON, or API keys.
-
-### Before session end (when you complete a task)
-
-Update this file in the same PR/commit as your code changes:
-
-1. **Progress log** — add a dated entry: what changed, which files, how to verify.
-2. **System notes** — if you learned something non-obvious (API quirks, bugs, conventions), add it under **System notes**.
-3. **Roadmap** — move completed items to Progress log; add new planned items if discussed.
-4. **Architecture** — update the diagram or file map if you added modules, routes, or env vars.
-
-Keep entries factual and brief. Future agents depend on this file being current.
+Repository: [github.com/v3gaS/Google-Maps-Explorer-3D](https://github.com/v3gaS/Google-Maps-Explorer-3D)
 
 ---
 
-## Project overview
+## Project summary
 
-**Name:** 3D Google Maps Explorer (`googlemapsAI`)
-
-**Purpose:** A browser-based explorer that renders **Google Maps native 3D** (`Map3DElement`) with photorealistic buildings where available, plus screen-space atmosphere (time of day, clouds, rain, snow) and location search.
-
-**Stack:**
+A browser app that explores the world using Google Maps **native 3D** (`Map3DElement`), with screen-space atmosphere effects (time of day, clouds, rain, snow), location search, and optional live weather sync.
 
 | Layer | Technology |
 |-------|------------|
 | Server | Node.js 18+, Express |
-| Map | Google Maps JavaScript API (`v=beta`, `maps3d` library, `Map3DElement`) |
+| Map | Google Maps JavaScript API (`v=beta`, `maps3d`) |
 | Atmosphere | Canvas 2D overlay (`pointer-events: none`) |
-| Weather data | Open-Meteo via server proxy (no extra API key) |
-| Config | `.env` via `dotenv` |
+| Weather | Open-Meteo via `/api/weather` (no extra API key) |
+| Config | `.env` (see [`.env.example`](.env.example)) |
 
-**Run locally:**
+---
+
+## Quick start
 
 ```bash
 npm install
-cp .env.example .env   # set GOOGLE_MAPS_API_KEY
-npm start              # http://localhost:3000
-npm test               # smoke tests (server must be running)
-npm run dev            # nodemon
+cp .env.example .env    # add GOOGLE_MAPS_API_KEY
+npm start               # http://localhost:3000
+npm test                # smoke tests (server must be running)
+npm run dev             # nodemon
+```
+
+User setup and API key instructions: [`README.md`](README.md)
+
+---
+
+## Repository layout
+
+```text
+server.js                 Express entry point
+server/
+  config.js               Environment and constants
+  weatherService.js       Open-Meteo proxy and WMO mapping
+
+js/
+  bootstrap.js            Client entry point
+  constants.js            Shared defaults and timing
+  map3d.js                Map3DElement and camera animations
+  geocoder.js             Address search
+  markers.js              Search result markers
+  atmosphere.js           Day/night tint, clouds, rain, snow
+  weather.js              Live weather sync
+  ui.js                   Control panel wiring
+  state.js                Shared application state
+  utils/format.js         Display helpers
+
+main.html                 App shell
+css/style.css             Styles
+tests/smoke.test.js       HTTP smoke tests
+scripts/capture-demo.mjs  README promo recording
+docs/demo.gif             README promotional animation
 ```
 
 ---
 
-## Architecture
+## Architecture rules
 
-```text
-server.js
-  server/config.js, server/weatherService.js
-  GET /api/health | /api/maps-config | /api/weather
-  static → main.html, js/, css/
+These constraints keep the app stable. Please preserve them when making changes.
 
-js/
-  constants.js, utils/format.js
-  bootstrap.js → map3d, geocoder, markers, atmosphere, weather, ui, state
-```
+1. **Map navigation** — Use `Map3DElement` only. Do not add OrbitControls, Three.js geo overlays, or a separate 2D `google.maps.Map`.
+2. **Atmosphere** — Keep effects screen-space on `#atmosphere-canvas` so map gestures are never blocked.
+3. **Map mode** — `Map3DElement` requires `mode: "HYBRID"` or `"SATELLITE"` or the map will not render.
+4. **API keys** — Never commit secrets. The browser loads the key from `/api/maps-config`; keep keys in `.env` only.
+5. **Modules** — ES modules in `js/`, no bundler. Extend existing files before adding new abstractions.
 
-**Design rules:**
+---
 
-- Map navigation is handled by `Map3DElement` only — do **not** reintroduce OrbitControls or a geo-synced Three.js scene on top of the map.
-- Atmosphere effects stay **screen-space** so map gestures are never blocked.
-- `Map3DElement` **requires** `mode: "HYBRID"` or `"SATELLITE"` or the map spins forever.
-- API keys stay server-side; browser loads key via `/api/maps-config`.
+## API routes
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/health` | Health check |
+| `GET /api/maps-config` | `{ apiKey, mapsVersion, mapId? }` |
+| `GET /api/weather?lat=&lng=` | Live weather for map center |
 
 ---
 
 ## Environment variables
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `GOOGLE_MAPS_API_KEY` | Yes | Maps JavaScript + Geocoding (browser, via maps-config) |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GOOGLE_MAPS_API_KEY` | Yes | Maps JavaScript + Geocoding |
 | `PORT` | No | Default `3000` |
 | `GOOGLE_MAP_ID` | No | Optional cloud map style |
 
-**Google Cloud APIs to enable:** Maps JavaScript API, Geocoding API, Map Tiles API (for photorealistic 3D).
+**Google Cloud APIs:** Maps JavaScript API, Geocoding API, Map Tiles API.
 
 **Local referrer restrictions:** `http://localhost:3000/*`, `http://127.0.0.1:3000/*`
 
-See [`.env.example`](.env.example).
+---
+
+## Development notes
+
+- Maps JS must load on the **`beta`** channel with `importLibrary("maps3d")`.
+- Photorealistic 3D may be unavailable in the **EEA**.
+- Live weather uses Open-Meteo WMO codes mapped to `clear`, `rain`, or `snow` (5-minute server cache).
+- Manual weather or cloud controls disable **Match real weather** mode.
 
 ---
 
 ## Testing
 
-- Smoke tests: [`tests/smoke.test.js`](tests/smoke.test.js) — run `npm test` with server up.
-- Manual checklist: see [`README.md`](README.md#manual-test-checklist).
+```bash
+npm start    # terminal 1
+npm test     # terminal 2
+```
+
+See [`README.md`](README.md) for the manual test checklist.
+
+Promo GIF capture:
+
+```bash
+npm run capture-demo
+```
+
+GIF is trimmed from the 15s mark by default (`GIF_START_SEC` to override).
 
 ---
 
-## Roadmap (planned, not yet built)
+## Contributing
 
-Prioritized ideas from project planning. Move items to **Progress log** when done.
-
-- [ ] Shareable URL hash for camera state (`lat,lng,range,tilt,heading,mode`)
-- [ ] Bookmarks sidebar (localStorage or `/api/bookmarks`)
-- [ ] Preset cinematic tours (`js/tours.js`)
-- [ ] Places API details panel after search
-- [ ] 3D overlays: `Polyline3DElement`, `Polygon3DElement` (`js/overlays3d.js`)
-- [ ] AI location guide (`/api/describe-location`, LLM) — deferred; needs `OPENAI_API_KEY` or similar
-- [ ] Production deploy (Vercel/Railway), PWA, embed mode
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md).
+- Keep changes focused; match existing naming and module structure.
+- Update [`README.md`](README.md) for user-visible changes.
+- Do not commit `.env`, API keys, or credential JSON files.
 
 ---
 
-## System notes
+## Planned enhancements
 
-Facts agents should know; append here when you discover something important.
-
-- **Maps API channel:** Must load with `v=beta` and `importLibrary("maps3d")` for `Map3DElement`.
-- **EEA limitation:** Photorealistic 3D tiles may be unavailable in the European Economic Area.
-- **Weather mapping:** `/api/weather` maps Open-Meteo WMO codes → `rain` | `snow` | `clear`; 5-minute server cache keyed by lat/lng (2 decimals).
-- **Live vs manual weather:** `state.matchRealWeather` in [`js/state.js`](js/state.js); toggling manual weather or cloud slider disables live mode.
-- **Legacy removed:** Old `js/app.js` (2D map + Three.js OrbitControls) was replaced by the modular `js/` layout — do not restore that pattern.
-- **Secrets:** `*.json` service accounts are gitignored; never use or commit `pwsmain-*.json`.
+- Shareable camera URLs (hash-based state)
+- Saved bookmarks and preset tours
+- Places API details panel
+- 3D overlays (`Polyline3DElement`, `Polygon3DElement`)
+- Optional AI location guide (future)
 
 ---
 
-## Progress log
+## License
 
-Newest entries first. **Agents: append here when you finish a task.**
-
-### 2026-05-31 — Senior code quality pass
-
-- Extracted `server/config.js`, `server/weatherService.js`; slimmed `server.js`.
-- Added `js/constants.js`, `js/utils/format.js`; JSDoc module headers across client code.
-- Fixed manual weather control flow (`applyManualWeather`, `applyManualCloudCoverage`).
-- Added guards for missing DOM/canvas/map; optional chaining on UI listeners.
-- Added `.editorconfig`, updated `package.json` metadata, expanded smoke tests.
-- **Verify:** `npm test` with server running.
-
-### 2026-05-31 — README promo + demo assets
-
-- Added `docs/demo.gif` and `docs/demo-poster.png` (captured from local app via `scripts/capture-demo.mjs`).
-- Rewrote `README.md`: hero animation, badges, beginner step-by-step Google API key guide.
-- **Verify:** view README on GitHub; GIF loads from `docs/demo.gif`.
-
-### 2026-05-31 — GitHub repository files
-
-- Added `LICENSE` (MIT), `SECURITY.md`, `CONTRIBUTING.md`, `.gitattributes`.
-- Added `.github/workflows/ci.yml`, PR template, issue templates.
-- Hardened `.gitignore`: blocks `.env`, `.env.*` (keeps `.env.example`), credential JSON patterns; removed blanket `*.json` that blocked `package.json`.
-- README: publishing-to-GitHub section.
-- **Verify:** `git check-ignore -v .env` and `git check-ignore -v pwsmain-4b81b178d286.json`.
-
-### 2026-05-31 — Real Weather Sync
-
-- Added `GET /api/weather` (Open-Meteo proxy) in [`server.js`](server.js).
-- Added [`js/weather.js`](js/weather.js): match-real-weather toggle, debounced refetch on map pan.
-- UI: checkbox + live status in [`main.html`](main.html); manual weather/cloud disabled when live mode on.
-- Extended [`js/atmosphere.js`](js/atmosphere.js) with `applyCloudCoverage`; [`js/state.js`](js/state.js) with `matchRealWeather`.
-- Smoke test + README updated.
-- **Verify:** toggle "Match real weather", pan map, run `npm test`, curl `/api/weather?lat=40.71&lng=-74.00`.
-
-### 2026-05-31 — v1 3D Maps Explorer (initial completion)
-
-- Replaced 2D `google.maps.Map` + Three.js overlay with `Map3DElement`.
-- Modularized into `js/bootstrap.js`, `map3d.js`, `geocoder.js`, `markers.js`, `atmosphere.js`, `ui.js`, `state.js`.
-- Server: `/api/maps-config`, `/api/health`; atmosphere via Canvas 2D.
-- **Verify:** open http://localhost:3000, search a landmark, test camera and weather controls.
-
----
-
-## Code conventions
-
-- ES modules in `js/`; no bundler — keep imports explicit.
-- Match existing style: minimal scope, no over-abstraction, no unrelated refactors.
-- Prefer extending existing modules over new parallel systems.
-- Update `README.md` for user-visible features; update **this file** for agent handoff and progress.
+MIT — see [LICENSE](LICENSE).
