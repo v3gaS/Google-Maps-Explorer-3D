@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# API keys, credentials, and certificates
+*-service-account*.json
+*credentials*.json
+*credential*.json
+pwsmain-*.json
+google-services.json
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Optional local overrides
+*.local

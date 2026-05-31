@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify secrets are gitignored
+        run: |
+          git check-ignore -v .env
+          git check-ignore -v pwsmain-test.json
+          test -f .env.example
+
+      - name: Start server and run smoke tests
+        env:
+          GOOGLE_MAPS_API_KEY: ci-smoke-test-placeholder-key
+          PORT: 3000
+        run: |
+          npm start &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          npm test
+          kill $SERVER_PID || true

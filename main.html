@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Google Maps Explorer</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌎</text></svg>">
+</head>
+<body>
+    <div id="map-container"></div>
+    <div id="atmosphere-tint" aria-hidden="true"></div>
+    <canvas id="atmosphere-canvas" aria-hidden="true"></canvas>
+
+    <button id="panel-toggle" type="button" class="panel-toggle">Hide Controls</button>
+
+    <div id="controls">
+        <h3>3D Explorer</h3>
+
+        <div id="error-banner" class="error-banner" hidden role="alert"></div>
+
+        <div class="control-group">
+            <label for="location-search">Search Location</label>
+            <input type="text" id="location-search" placeholder="City, address, or landmark">
+            <button id="search-btn" type="button">Go</button>
+        </div>
+
+        <div class="control-section">
+            <h4>Camera</h4>
+            <div class="control-group">
+                <label for="map-mode">Map Mode</label>
+                <select id="map-mode">
+                    <option value="HYBRID" selected>Hybrid</option>
+                    <option value="SATELLITE">Satellite</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="tilt-slider">Tilt <span id="tilt-value">65°</span></label>
+                <input type="range" id="tilt-slider" min="0" max="90" value="65">
+            </div>
+            <div class="control-group">
+                <label for="heading-slider">Heading <span id="heading-value">0°</span></label>
+                <input type="range" id="heading-slider" min="0" max="360" value="0">
+            </div>
+            <div class="control-group">
+                <label for="range-slider">Range <span id="range-value">800m</span></label>
+                <input type="range" id="range-slider" min="200" max="5000" value="800" step="50">
+            </div>
+            <div class="button-row">
+                <button id="orbit-btn" type="button">Orbit Location</button>
+                <button id="reset-btn" type="button" class="secondary">Reset View</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h4>Atmosphere</h4>
+            <div class="control-group">
+                <label for="time-slider">Time of Day <span id="time-value">12:00</span></label>
+                <input type="range" id="time-slider" min="0" max="24" value="12" step="0.5">
+            </div>
+            <div class="control-group">
+                <label for="cloud-slider">Cloud Coverage <span id="cloud-value">30%</span></label>
+                <input type="range" id="cloud-slider" min="0" max="100" value="30">
+            </div>
+            <div class="control-group">
+                <label class="toggle-row">
+                    <input type="checkbox" id="match-real-weather">
+                    Match real weather
+                </label>
+                <p id="live-weather-status" class="live-weather-status" hidden></p>
+            </div>
+            <div class="control-group">
+                <label>Weather</label>
+                <div class="weather-buttons">
+                    <button id="rain-btn" type="button">Rain</button>
+                    <button id="snow-btn" type="button">Snow</button>
+                    <button id="clear-btn" type="button">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <p>Loading map data...</p>
+    </div>
+
+    <script type="module" src="js/bootstrap.js"></script>
+</body>
+</html>
